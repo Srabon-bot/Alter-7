@@ -39,6 +39,20 @@ Single-user MERN coach ("THE 7"). Two independent npm projects; there is no root
 - Production auth cookies are `Secure; SameSite=None`. Both apps must be HTTPS; cross-site cookies can be blocked by Safari, so a shared custom domain is safer.
 - Render/Railway/Fly are supported API alternatives (`npm start`, root `server`); Node 20+ is required by `server/package.json` engines.
 
+## Deployment status (2026-10-29)
+
+Phase 1 is deployed to Vercel; the 3-day gate has not started yet.
+
+- Repo: GitHub `main`, both Vercel projects import from it. No secrets are committed.
+- API project: Vercel project `alter-7`, Root Directory `server`, URL `https://alter-7.vercel.app`. Env vars set: `MONGODB_URI`, `JWT_SECRET`, `CLIENT_ORIGIN`, `ALLOW_REGISTRATION=false`, `DEFAULT_TIMEZONE=Asia/Dhaka`.
+- Database: Atlas free cluster, host `cluster0.oa7g59a.mongodb.net`, database `alter7`, user `alter7`, network access `0.0.0.0/0`. Credentials live in Vercel and local `server/.env` only — never in this file or git.
+- Known issue, resolved: `MONGODB_URI` was first pasted with the Atlas placeholder `<cluster-url>`, which produced `querySrv EBADNAME _mongodb._tcp.<cluster-url>` in runtime logs. `/api/health` must return `200 {"ok":true,"db":true}` before continuing.
+- Pending: client Vercel project (Root Directory `client`, project name `alter-7-app`, `VITE_API_URL=https://alter-7.vercel.app/api`), then set `CLIENT_ORIGIN=https://alter-7-app.vercel.app` on the API project and redeploy it.
+- `CLIENT_ORIGIN` must always be the client origin, never the API's own URL.
+- `vercel.app` is on the Public Suffix List, so the two projects are cross-site; production cookies use `SameSite=None`. If Safari drops the session, use custom subdomains of one owned domain or proxy `/api` through the client domain.
+- Local `server/.env` still points at `mongodb://127.0.0.1:27017/alter7` with a dev secret. Local and production databases are intentionally separate; do not copy the dev secret to Vercel.
+- Next milestone: finish deploy, register the single user, run the smoke test, then the 3-day Phase 1 gate in `README.md`.
+
 ## Conventions
 - ESM everywhere; relative imports need explicit `.js`/`.jsx` extensions.
 - Server tests include real DB integrations through `mongodb-memory-server`, plus pure unit tests. Changes to scoring, dates, close behavior, auth, or deployment entrypoints need Vitest coverage (current tests cover streaks, lost/backfilled days, ranks, month boundaries, Dhaka rollover, noon auto-close, the 3-day backfill lock, route-level CRUD, and the Vercel handler).
