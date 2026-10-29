@@ -1,0 +1,188 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --void: #060607;
+  --ink: #0d0e10;
+  --ink-2: #141518;
+  --line: #1e2024;
+  --line-strong: #2c2f35;
+  --text: #e8e6e1;
+  --text-dim: #8b8d93;
+  --text-faint: #55575d;
+  --brass: #b89b5e;
+  --blood: #8e1b1b;
+  --font-voice: 'Instrument Serif', Newsreader, Georgia, serif;
+  --font-ui: Inter, system-ui, sans-serif;
+  --font-data: 'IBM Plex Mono', monospace;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 26px;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--brass);
+  color: var(--void);
+}
+
+.grain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.vignette {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+input,
+textarea,
+button {
+  font: inherit;
+}
+
+input:focus,
+textarea:focus,
+button:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+.underline-input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  color: var(--text);
+  padding: 12px 0;
+}
+
+.underline-input:focus {
+  outline: none;
+  border-bottom-color: var(--brass);
+}
+
+.label {
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-family: var(--font-ui);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0 24px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  line-height: 16px;
+  cursor: pointer;
+  transition: background 500ms var(--ease), color 500ms var(--ease), border-color 500ms var(--ease);
+}
+
+.btn-primary {
+  background: var(--text);
+  color: var(--void);
+  border: 0;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+}
+
+.btn-blood {
+  background: transparent;
+  color: var(--blood);
+  border: 1px solid var(--blood);
+}
+
+.voice {
+  font-family: var(--font-voice);
+}
+
+.data {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.rise {
+  animation: rise 600ms var(--ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tick {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--line-strong);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.tick[data-on='true'] {
+  border-color: var(--brass);
+  color: var(--brass);
+}
+
+.seg {
+  height: 8px;
+  flex: 1;
+  border: 1px solid var(--line-strong);
+}
+
+.seg[data-on='true'] {
+  background: var(--text);
+  border-color: var(--text);
+}
