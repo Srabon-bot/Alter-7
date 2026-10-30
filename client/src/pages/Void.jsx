@@ -7,12 +7,12 @@ export default function Void() {
   const summary = useQuery({ queryKey: ['summary'], queryFn: statsApi.summary });
 
   function continueOn() {
-    if (summary.data?.morningDue) navigate('/morning');
+    if (summary.data?.openingDue) navigate('/morning');
     else navigate('/dashboard');
   }
 
   const line = summary.data?.latestLine || 'Report in. The day is waiting.';
-  const destination = summary.data?.morningDue ? 'Continue to morning report' : 'Continue to today';
+  const destination = summary.data?.openingDue ? 'Continue to the opening check' : 'Continue to today';
 
   return (
     <button

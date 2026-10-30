@@ -6,7 +6,7 @@
 
 ALTER 7 is a personal, single-user MERN web app. Its coach is **THE 7**: the calm, exact man the user is becoming. Each day the user reports in, the app computes streaks and rank in plain code (never by the AI), and THE 7 speaks using real data: one sentence of fact, one question the user cannot dodge. The product is built to manufacture the two things the user says make him follow through: **external deadlines** and **visible progress**.
 
-**Core loop:** open the void → THE 7's line → morning report → evening confirm → day closes → verdict → repeat.
+**Core loop:** open the void → THE 7's line → opening check → evening confirm → close the day → verdict → repeat.
 
 ## 2. Scope: MVP first
 
@@ -33,23 +33,24 @@ Srabon, final-semester CSE student in Dhaka (**Asia/Dhaka, UTC+6**). Learns fast
 
 **Seed habits (all core):**
 
-| Habit | Target | Reported |
-|---|---|---|
-| Phone away | 9:00 PM | next morning |
-| Lights out | 10:00 PM | next morning |
-| Wake up | 5:30 AM | next morning |
-| Morning workout | after waking | evening confirm |
+| Habit | Target | Window | Reported |
+|---|---|---|---|
+| Wake up | 5:30 AM | morning | opening check on D |
+| Morning workout | after waking | evening | evening confirm on D |
+| Phone away | 9:00 PM | evening | evening confirm on D |
+| Lights out | 10:00 PM | evening | evening confirm on D |
 
 Planned later addition: 2 hours of focused work on one goal. Sleep window is 7.5 hours by design; the app must warn if the user edits it below 7 hours.
 
 ## 4. The Daily Model (ritual day)
 
-Habits straddle midnight, so a day is a **ritual day**: from waking on date D to waking on D+1.
+A day is a **ritual day**: it opens when the user wakes on date D and closes when he goes down that night. One day, one log, one score.
 
-- **Evening Confirm (on D, before 9 PM):** workout done, focus hours (v1.1), mood and energy (1 to 5), optional note. Editable until the day closes.
-- **Morning Report (on D+1, after waking):** last night's phone-away, lights-out and wake time. Submitting it **closes day D**.
-- **Auto-close:** if no morning report by 12:00 noon on D+1, day D closes automatically with the night habits marked not done. No cron job: on any authenticated request the server closes overdue days (lazy evaluation).
-- **On close, the server:** computes score, won or lost, streak, XP and rank; then requests THE 7's verdict from the AI (see section 10) and saves it.
+- **Opening check (on D, after waking):** files the `morning` window (the wake). It never closes the day.
+- **Evening confirm (on D, before bed):** files the `evening` window (workout, phone away, lights out), mood and energy (1 to 5) and an optional note. Saving it leaves the day open, so filing the workout at 6 PM never marks lights out missed.
+- **Close the day:** the evening screen carries an explicit **Close the day** button. Unfinished habits count as missed, the result is computed, the verdict is written and the stats update.
+- **Auto-close:** a day still open at 12:00 noon on D+1 closes itself with the evening habits marked not done. No cron job: every authenticated request closes overdue days (lazy evaluation).
+- **On close, the server:** computes score, won or lost, streak, XP and rank; then asks THE 7 for the verdict (canned until AI lands, section 10) and saves it.
 - **Backfill:** a closed day can be edited for up to 3 days, flagged `backfilled`; streaks recalculate.
 
 ## 5. Character Bible: THE 7
@@ -177,15 +178,15 @@ Rank never drops; the streak can break. VII is solid brass.
 
 ### 6.7 Screens
 
-- **Void (every open):** pitch-black screen, THE 7's latest line fades in, serif, centered. Tap to continue: Morning Report if due, else Dashboard. No intro animation, no sound.
-- **Dashboard:** huge streak numeral; THE 7's line; today's habits; quiet 7-day strip of hairline marks. Nothing else.
-- **Evening Confirm and Morning Report:** one column of habit rows, mood and energy as 5 hairline segments, one button: **Report in.**
+- **Void (every open):** pitch-black screen, THE 7's latest line fades in, serif, centered. Tap to continue: the opening check while the wake is unfiled before noon, else Dashboard. No intro animation, no sound.
+- **Dashboard:** huge streak numeral; one action block for today (opening check due, evening confirm open, close the day, or closed with its score); today's habits in the order they happen (wake → workout → phone away → lights out); the last closed verdict; quiet 7-day strip of hairline marks. Nothing else.
+- **Opening check and Evening confirm:** one column of habit rows for that window; mood and energy as 5 hairline segments on the evening screen. **Report in** files the window and leaves the day open. The evening screen also offers **Close the day**, which saves and closes.
 - **Chat:** near-empty void; his last line top-center; underline input at the bottom.
 - **History (v1.1):** monochrome heatmap in grays; brass only for the longest streak.
 
 ### 6.8 Microcopy
 
-Buttons: Report in · Continue · Delete. Empty: 'Nothing logged. Noted.' Loading: 'Reviewing the record.' Error: 'It did not save. Try again.' Offline: 'No signal. The work still counts.' Delete confirm: 'This cannot be undone.'
+Buttons: Report in · Close the day · Continue · Delete. Day still open: 'Filed. The day is still open.' Close warning: 'Closing marks unfinished core habits missed.' Empty: 'Nothing logged. Noted.' Loading: 'Reviewing the record.' Error: 'It did not save. Try again.' Offline: 'No signal. The work still counts.' Delete confirm: 'This cannot be undone.'
 
 ### 6.9 Accessibility and CSS starter
 
@@ -218,8 +219,8 @@ Contrast exceeds WCAG AA for all essential text; focus ring 2px brass, 2px offse
 All documents carry `userId`, `createdAt`, `updatedAt`. Dates are `YYYY-MM-DD` strings in the user's timezone.
 
 - **User:** email (unique), passwordHash, name, timezone, personaMode, currentStreak, longestStreak, totalXp, shareNotesWithAI (default false)
-- **Habit:** name, description, type (`boolean` or `numeric`), target, unit, weight (1 to 5), targetTime, window (`day` or `night`), core (boolean), active, order, archivedAt
-- **DayLog:** date (ritual day, unique per user), entries `[{habitId, done, value}]`, mood, energy, note, eveningAt, morningAt, status (`open` or `closed`), closedBy (`morning` or `auto`), score, won, backfilled
+- **Habit:** name, description, type (`boolean` or `numeric`), target, unit, weight (1 to 5), targetTime, window (`morning` or `evening`), core (boolean), active, order, archivedAt
+- **DayLog:** date (ritual day, unique per user), entries `[{habitId, done, value}]`, mood, energy, note, eveningAt, morningAt, status (`open` or `closed`), closedBy (`evening`, `morning` or `auto`), score, won, backfilled
 - **Verdict:** date (unique per user), verdict, evidence, question, modelUsed
 - **Message:** role (`user` or `the7`), text, mode
 - *v1.1:* **Mission** (title, notes, date, status, priority) and **PainLog** (date, what, trigger, lesson, tags)
@@ -262,10 +263,11 @@ Implemented as pure functions in `services/stats.js`.
 | PATCH/DELETE | /habits/:id | update, archive, delete |
 | GET | /days?from&to | list day logs |
 | GET | /days/:date | one day log |
-| PUT | /days/:date/evening | evening confirm (create or update) |
-| PUT | /days/:date/morning | morning report; closes the day, returns score, streak, rank, verdict |
+| PUT | /days/:date/evening | evening confirm (create or update); leaves the day open |
+| PUT | /days/:date/morning | opening check (create or update); leaves the day open |
+| POST | /days/:date/close | close the day; returns score, streak, rank, verdict |
 | DELETE | /days/:date | delete a day log |
-| GET | /stats/summary | streak, XP, rank, 7-day strip |
+| GET | /stats/summary | streak, XP, rank, opening/evening/closing due, 7-day strip |
 | GET | /verdict/latest | latest verdict for the void screen |
 | GET/POST/DELETE | /chat | history, send, clear |
 | GET | /export | full JSON export (v1.1) |
@@ -317,7 +319,7 @@ alter-7/
 
 Each phase must be deployed and used for 3 real days before the next one starts. The builder must not add features outside the current phase.
 
-1. **Phase 1, foundation:** auth, seeded habits with CRUD, evening confirm, morning report, day close with lazy auto-close, `stats.js` with tests, void screen and dashboard in the Quiet Weight theme.
+1. **Phase 1, foundation:** auth, seeded habits with CRUD, opening check, evening confirm, explicit close the day with lazy auto-close, `stats.js` with tests, void screen and dashboard in the Quiet Weight theme.
 2. **Phase 2, voice:** AI wrapper with fallback, persona config, output guard, daily verdict on close, chat, Quiet-mode slump rule.
 3. **Phase 3, depth:** Missions and Pain Log (CRUD), focus-hours habit.
 4. **Phase 4, polish:** history and analytics, PWA, export, motion polish.
@@ -325,7 +327,7 @@ Each phase must be deployed and used for 3 real days before the next one starts.
 ## 16. Acceptance Criteria
 
 - A report takes under 30 seconds on a phone and updates streak, rank and verdict immediately.
-- Unit tests cover: normal streak, a lost day, a backfilled day, all-core-done edge, month boundary, Asia/Dhaka date rollover, lazy auto-close at noon, rank never decreasing.
+- Unit tests cover: normal streak, a lost day, a backfilled day, all-core-done edge, month boundary, Asia/Dhaka date rollover, a day that stays open until it is closed, the 3-day edit lock, lazy auto-close at noon, rank never decreasing.
 - Opening the app always shows the void screen with THE 7's latest line, then continues to the right page. No sound anywhere.
 - Habits, day logs and messages support create, read, update and delete from the UI.
 - No AI reply contains an exclamation mark or emoji; chat replies stay within 60 words; verdicts within 120 words.

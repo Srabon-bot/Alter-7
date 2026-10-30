@@ -49,6 +49,29 @@ function assertEditable(day, tz) {
   return { backfilled: true };
 }
 
+function isBackfill(date, tz) {
+  return compareDates(date, dateInTz(new Date(), tz)) < 0;
+}
+
+function serializeStats(stats) {
+  return {
+    currentStreak: stats.currentStreak,
+    longestStreak: stats.longestStreak,
+    totalXp: stats.totalXp,
+    rank: stats.rank,
+  };
+}
+
+function serializeVerdict(verdict, date) {
+  return {
+    date,
+    verdict: verdict.verdict,
+    evidence: verdict.evidence,
+    question: verdict.question,
+    line: cannedLine(verdict),
+  };
+}
+
 router.get('/', validate(daysQuerySchema), async (req, res, next) => {
   try {
     const filter = { userId: req.user._id };
@@ -87,67 +110,89 @@ router.get('/:date', validate(dayDateSchema), async (req, res, next) => {
   }
 });
 
+// The evening confirm files the evening window and leaves the day open. Closing is its own step
+// so filing the workout early never marks lights out missed.
 router.put('/:date/evening', validate(eveningSchema), async (req, res, next) => {
   try {
-    const date = req.params.date;
-    const day = await getOrCreateDay(req.user._id, date);
-    const { backfilled } = assertEditable(day, req.user.timezone);
-    const habits = await activeHabits(req.user._id);
-    mergeWindowEntries(day, req.body.entries, habits, 'day');
-    if (req.body.mood !== undefined) day.mood = req.body.mood;
-    if (req.body.energy !== undefined) day.energy = req.body.energy;
-    if (req.body.note !== undefined) day.note = req.body.note;
-    day.eveningAt = new Date();
-    if (backfilled) day.backfilled = true;
-    await day.save();
-
-    if (day.status === 'closed') {
-      await persistUserStats(req.user._id, req.user.rank);
-    }
-
-    res.json({ day: serializeDay(day) });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.put('/:date/morning', validate(morningSchema), async (req, res, next) => {
-  try {
-    const date = req.params.date;
+    const { date } = req.params;
     const existing = await DayLog.findOne({ userId: req.user._id, date });
     const wasClosed = existing?.status === 'closed';
     if (existing) assertEditable(existing, req.user.timezone);
 
     const day = await getOrCreateDay(req.user._id, date);
     const habits = await activeHabits(req.user._id);
-    mergeWindowEntries(day, req.body.entries, habits, 'night');
-    day.morningAt = new Date();
+    mergeWindowEntries(day, req.body.entries, habits, 'evening');
+    if (req.body.mood !== undefined) day.mood = req.body.mood;
+    if (req.body.energy !== undefined) day.energy = req.body.energy;
+    if (req.body.note !== undefined) day.note = req.body.note;
+    day.eveningAt = new Date();
+    if (wasClosed || isBackfill(date, req.user.timezone)) day.backfilled = true;
     await day.save();
+
+    if (!wasClosed) return res.json({ day: serializeDay(day) });
+
+    // A closed day was edited: re-score it and refresh its verdict.
+    const result = await closeDay({
+      userId: req.user._id,
+      date,
+      closedBy: existing.closedBy || 'evening',
+      backfilled: true,
+    });
+    res.json({ day: serializeDay(result.day) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// The opening check files the morning window (the wake) and never closes the day.
+router.put('/:date/morning', validate(morningSchema), async (req, res, next) => {
+  try {
+    const { date } = req.params;
+    const existing = await DayLog.findOne({ userId: req.user._id, date });
+    const wasClosed = existing?.status === 'closed';
+    if (existing) assertEditable(existing, req.user.timezone);
+
+    const day = await getOrCreateDay(req.user._id, date);
+    const habits = await activeHabits(req.user._id);
+    mergeWindowEntries(day, req.body.entries, habits, 'morning');
+    day.morningAt = new Date();
+    if (wasClosed || isBackfill(date, req.user.timezone)) day.backfilled = true;
+    await day.save();
+
+    if (!wasClosed) return res.json({ day: serializeDay(day) });
 
     const result = await closeDay({
       userId: req.user._id,
       date,
-      closedBy: 'morning',
-      backfilled: wasClosed || req.body.backfilled === true,
+      closedBy: existing.closedBy || 'evening',
+      backfilled: true,
     });
+    res.json({ day: serializeDay(result.day) });
+  } catch (err) {
+    next(err);
+  }
+});
 
-    const user = {
-      currentStreak: result.stats.currentStreak,
-      longestStreak: result.stats.longestStreak,
-      totalXp: result.stats.totalXp,
-      rank: result.stats.rank,
-    };
+// Lights out closes the day. Explicit on purpose: the evening confirm can be filed early.
+router.post('/:date/close', validate(dayDateSchema), async (req, res, next) => {
+  try {
+    const { date } = req.params;
+    const existing = await DayLog.findOne({ userId: req.user._id, date });
+    if (!existing) throw httpError(404, 'NOT_FOUND', 'Nothing filed yet. Report in first.');
+
+    const { backfilled } = assertEditable(existing, req.user.timezone);
+
+    const result = await closeDay({
+      userId: req.user._id,
+      date,
+      closedBy: 'evening',
+      backfilled: backfilled || isBackfill(date, req.user.timezone),
+    });
 
     res.json({
       day: serializeDay(result.day),
-      stats: user,
-      verdict: {
-        date,
-        verdict: result.verdict.verdict,
-        evidence: result.verdict.evidence,
-        question: result.verdict.question,
-        line: cannedLine(result.verdict),
-      },
+      stats: serializeStats(result.stats),
+      verdict: serializeVerdict(result.verdict, date),
     });
   } catch (err) {
     next(err);

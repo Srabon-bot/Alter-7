@@ -13,7 +13,7 @@ const empty = {
   unit: '',
   weight: 5,
   targetTime: '',
-  window: 'day',
+  window: 'evening',
   core: true,
 };
 
@@ -61,9 +61,12 @@ function HabitFields({ form, setForm }) {
         </label>
         <label>
           <span className="label">Window</span>
-          <select className="underline-input bg-void" value={form.window} onChange={set('window')}>
-            <option value="day">Day</option>
-            <option value="night">Night</option>
+          <select className="underline-input bg-void" value={form.window} onChange={set('window')} required>
+            <option value="" disabled>
+              Choose a window
+            </option>
+            <option value="morning">Morning</option>
+            <option value="evening">Evening</option>
           </select>
         </label>
       </div>
@@ -88,7 +91,7 @@ function HabitFields({ form, setForm }) {
         </label>
       </div>
       <p className="text-small text-text-dim">
-        Evening confirm files day habits. Morning report files night habits.
+        Morning files the wake at the opening check. Evening holds the last work and closes the day.
       </p>
       {form.type === 'numeric' ? (
         <div className="grid grid-cols-2 gap-6">
@@ -189,7 +192,7 @@ export default function Habits() {
       unit: habit.unit || '',
       weight: habit.weight ?? 5,
       targetTime: habit.targetTime || '',
-      window: habit.window || 'day',
+      window: ['morning', 'evening'].includes(habit.window) ? habit.window : '',
       core: Boolean(habit.core),
     });
     setConfirmId(null);
@@ -214,7 +217,8 @@ export default function Habits() {
               <div className="min-w-0 flex-1">
                 <p>{h.name}</p>
                 <p className="data text-small text-text-dim">
-                  {h.window} · w{h.weight}
+                  {h.window === 'morning' || h.window === 'evening' ? h.window : 'needs a window'} · w
+                  {h.weight}
                   {h.type === 'numeric' ? ` · ${h.target}${h.unit ? ` ${h.unit}` : ''}` : ''}
                   {h.core ? ' · core' : ''}
                   {h.targetTime ? ` · ${formatTime(h.targetTime)}` : ''}

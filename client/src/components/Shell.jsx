@@ -3,8 +3,8 @@ import { authApi } from '../api/endpoints.js';
 
 const links = [
   { to: '/dashboard', label: 'Today' },
-  { to: '/evening', label: 'Evening' },
   { to: '/morning', label: 'Morning' },
+  { to: '/evening', label: 'Evening' },
   { to: '/habits', label: 'Habits' },
 ];
 

@@ -11,10 +11,10 @@ import {
 import { addDays, dateInTz, isOverdueForAutoClose, partsInTz, sleepHours } from '../src/lib/dates.js';
 
 const habits = [
-  { _id: 'phone', name: 'Phone away', type: 'boolean', weight: 5, core: true, window: 'night', active: true },
-  { _id: 'lights', name: 'Lights out', type: 'boolean', weight: 5, core: true, window: 'night', active: true },
-  { _id: 'wake', name: 'Wake up', type: 'boolean', weight: 5, core: true, window: 'night', active: true },
-  { _id: 'work', name: 'Morning workout', type: 'boolean', weight: 5, core: true, window: 'day', active: true },
+  { _id: 'phone', name: 'Phone away', type: 'boolean', weight: 5, core: true, window: 'evening', active: true },
+  { _id: 'lights', name: 'Lights out', type: 'boolean', weight: 5, core: true, window: 'evening', active: true },
+  { _id: 'wake', name: 'Wake up', type: 'boolean', weight: 5, core: true, window: 'morning', active: true },
+  { _id: 'work', name: 'Morning workout', type: 'boolean', weight: 5, core: true, window: 'evening', active: true },
 ];
 
 function allDone(ids = ['phone', 'lights', 'wake', 'work']) {

@@ -57,7 +57,7 @@ export async function closeDay({
   userId,
   date,
   closedBy,
-  markNightMissed = false,
+  markEveningMissed = false,
   backfilled = false,
   skipStats = false,
 }) {
@@ -65,14 +65,14 @@ export async function closeDay({
   const habits = await activeHabits(userId);
   const day = await getOrCreateDay(userId, date);
 
-  if (markNightMissed) {
-    const nightIds = new Set(habits.filter((h) => h.window === 'night').map((h) => String(h._id)));
+  if (markEveningMissed) {
+    const eveningIds = new Set(habits.filter((h) => h.window === 'evening').map((h) => String(h._id)));
     const map = new Map((day.entries || []).map((e) => [String(e.habitId), e.toObject?.() || e]));
     for (const habit of habits) {
       const id = String(habit._id);
       if (!map.has(id)) {
         map.set(id, { habitId: habit._id, done: false, value: null });
-      } else if (nightIds.has(id) && map.get(id).done !== true) {
+      } else if (eveningIds.has(id) && map.get(id).done !== true) {
         map.set(id, { ...map.get(id), done: false });
       }
     }
@@ -86,6 +86,7 @@ export async function closeDay({
   day.won = result.won;
   if (backfilled) day.backfilled = true;
   if (closedBy === 'morning' && !day.morningAt) day.morningAt = new Date();
+  if (closedBy === 'evening' && !day.eveningAt) day.eveningAt = new Date();
   await day.save();
 
   const canned = cannedVerdict({
@@ -151,7 +152,7 @@ export async function autoCloseOverdue(userId, now = new Date(), tz = 'Asia/Dhak
         userId,
         date,
         closedBy: 'auto',
-        markNightMissed: true,
+        markEveningMissed: true,
         skipStats: true,
       });
       closedNow.push(result.day);

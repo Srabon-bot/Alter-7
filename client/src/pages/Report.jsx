@@ -9,19 +9,21 @@ import Shell from '../components/Shell.jsx';
 import { formatDay } from '../lib/format.js';
 
 const COPY = {
+  morning: {
+    title: 'Opening check',
+    heading: 'The day is open.',
+    hint: 'File the wake. The day runs until lights out.',
+    section: 'This morning',
+    other: 'Workout, phone away and lights out are filed in the evening confirm.',
+    saved: 'Filed. The day is open.',
+  },
   evening: {
     title: 'Evening confirm',
+    heading: 'Close the day.',
+    hint: 'File the last work of the day, then close it.',
     section: 'Today',
-    heading: 'The work of today.',
-    hint: "Today's work. The day closes tomorrow morning.",
-    other: 'Phone away, lights out and wake time are filed in the morning report.',
-  },
-  morning: {
-    title: 'Morning report',
-    section: 'Last night',
-    heading: 'Last night. Then the day closes.',
-    hint: '',
-    other: 'Morning workout was filed in last night’s confirm.',
+    other: 'The wake was filed in this morning’s opening check.',
+    saved: 'Filed. The day is still open.',
   },
 };
 
@@ -42,12 +44,7 @@ export default function Report({ kind }) {
   const [params, setParams] = useSearchParams();
   const summary = useQuery({ queryKey: ['summary'], queryFn: statsApi.summary });
   const copy = COPY[kind] || COPY.evening;
-
-  const defaultDate =
-    kind === 'morning'
-      ? summary.data?.morningDate || summary.data?.yesterday
-      : summary.data?.eveningDate;
-  const date = params.get('date') || defaultDate;
+  const date = params.get('date') || summary.data?.today;
 
   const dayQuery = useQuery({
     queryKey: ['day', date],
@@ -56,10 +53,9 @@ export default function Report({ kind }) {
   });
 
   const day = dayQuery.data?.day;
-  const windowName = kind === 'morning' ? 'night' : 'day';
   const habits = useMemo(
-    () => (dayQuery.data?.habits || []).filter((h) => h.window === windowName),
-    [dayQuery.data, windowName],
+    () => (dayQuery.data?.habits || []).filter((h) => h.window === kind),
+    [dayQuery.data, kind],
   );
 
   const [done, setDone] = useState({});
@@ -67,22 +63,26 @@ export default function Report({ kind }) {
   const [energy, setEnergy] = useState(null);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(null);
 
   const isPast = Boolean(date && summary.data?.today && date !== summary.data.today);
   const showTools = toolsOpen ?? isPast;
   const status = statusOf(day);
+  const closed = day?.status === 'closed';
+  const missing = habits.filter((h) => !done[h.id]);
 
   useEffect(() => {
     setError('');
+    setSaved(false);
     setConfirmDelete(false);
     setDone({});
     setMood(null);
     setEnergy(null);
     setNote('');
     setToolsOpen(null);
-  }, [date]);
+  }, [date, kind]);
 
   useEffect(() => {
     if (!dayQuery.data) return;
@@ -101,24 +101,23 @@ export default function Report({ kind }) {
   }
 
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (closeAfter) => {
       const entries = habits.map((h) => ({ habitId: h.id, done: Boolean(done[h.id]) }));
       if (kind === 'evening') {
-        return daysApi.evening(date, { entries, mood, energy, note });
+        await daysApi.evening(date, { entries, mood, energy, note });
+        return closeAfter ? daysApi.close(date) : null;
       }
-      return daysApi.morning(date, { entries });
+      await daysApi.morning(date, { entries });
+      return null;
     },
-    onSuccess: async (data) => {
+    onSuccess: async (_result, closeAfter) => {
+      setError('');
       await qc.invalidateQueries();
-      if (kind === 'morning' && data?.day) {
-        navigate('/dashboard', {
-          state: {
-            justClosed: { date: data.day.date, won: data.day.won, score: data.day.score },
-          },
-        });
+      if (kind === 'morning' || closeAfter) {
+        navigate('/dashboard');
         return;
       }
-      navigate('/dashboard');
+      setSaved(true);
     },
     onError: (err) => setError(err.uiMessage),
   });
@@ -153,14 +152,18 @@ export default function Report({ kind }) {
 
         <p className="label mt-12">{copy.section}</p>
         <div className="mt-2">
-          {habits.map((h) => (
-            <HabitRow
-              key={h.id}
-              habit={h}
-              done={Boolean(done[h.id])}
-              onToggle={(value) => setDone((s) => ({ ...s, [h.id]: value }))}
-            />
-          ))}
+          {habits.length === 0 ? (
+            <p className="py-4 text-text-dim">Nothing filed. Noted.</p>
+          ) : (
+            habits.map((h) => (
+              <HabitRow
+                key={h.id}
+                habit={h}
+                done={Boolean(done[h.id])}
+                onToggle={(value) => setDone((s) => ({ ...s, [h.id]: value }))}
+              />
+            ))
+          )}
         </div>
         <p className="mt-4 text-small text-text-dim">{copy.other}</p>
 
@@ -179,12 +182,51 @@ export default function Report({ kind }) {
           </>
         ) : null}
 
+        {kind === 'evening' && !closed ? (
+          <p className="mt-6 text-small text-text-dim">
+            {missing.length
+              ? `Still open: ${missing.map((h) => h.name).join(', ')}. Closing marks them missed.`
+              : 'Everything is filed. Close the day and it is scored.'}
+          </p>
+        ) : null}
+
         {dayQuery.isError ? <p className="mt-6 text-small text-blood">{dayQuery.error.uiMessage}</p> : null}
         {error ? <p className="mt-6 text-small text-blood">{error}</p> : null}
+        {saved ? <p className="mt-6 text-small text-text-dim">{copy.saved}</p> : null}
 
-        <Button className="mt-12 w-full" onClick={() => save.mutate()} disabled={save.isPending || !date}>
-          {save.isPending ? 'Reviewing the record.' : 'Report in'}
-        </Button>
+        {kind === 'morning' || closed ? (
+          <Button className="mt-8 w-full" onClick={() => save.mutate(false)} disabled={save.isPending || !date}>
+            {save.isPending ? 'Reviewing the record.' : closed ? 'Save changes' : 'Report in'}
+          </Button>
+        ) : missing.length === 0 ? (
+          <>
+            <Button className="mt-8 w-full" onClick={() => save.mutate(true)} disabled={save.isPending || !date}>
+              {save.isPending ? 'Reviewing the record.' : 'Close the day'}
+            </Button>
+            <Button
+              variant="secondary"
+              className="mt-4 w-full"
+              onClick={() => save.mutate(false)}
+              disabled={save.isPending || !date}
+            >
+              Report in
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button className="mt-8 w-full" onClick={() => save.mutate(false)} disabled={save.isPending || !date}>
+              {save.isPending ? 'Reviewing the record.' : 'Report in'}
+            </Button>
+            <Button
+              variant="secondary"
+              className="mt-4 w-full"
+              onClick={() => save.mutate(true)}
+              disabled={save.isPending || !date}
+            >
+              Close the day
+            </Button>
+          </>
+        )}
 
         <div className="mt-16 border-t border-line pt-6">
           <button

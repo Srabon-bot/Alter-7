@@ -20,7 +20,7 @@ const dayLogSchema = new mongoose.Schema(
     eveningAt: { type: Date, default: null },
     morningAt: { type: Date, default: null },
     status: { type: String, enum: ['open', 'closed'], default: 'open' },
-    closedBy: { type: String, enum: ['morning', 'auto', null], default: null },
+    closedBy: { type: String, enum: ['morning', 'evening', 'auto', null], default: null },
     score: { type: Number, default: null },
     won: { type: Boolean, default: null },
     backfilled: { type: Boolean, default: false },

@@ -10,7 +10,7 @@ const habitSchema = new mongoose.Schema(
     unit: { type: String, default: '' },
     weight: { type: Number, min: 1, max: 5, default: 5 },
     targetTime: { type: String, default: '' },
-    window: { type: String, enum: ['day', 'night'], default: 'day' },
+    window: { type: String, enum: ['morning', 'evening'], default: 'evening' },
     core: { type: Boolean, default: true },
     active: { type: Boolean, default: true },
     order: { type: Number, default: 0 },

@@ -10,7 +10,7 @@ Single-user MERN coach ("THE 7"). Two independent npm projects; there is no root
 - Client has no test, lint, or typecheck script; `npm run build` is the only client check.
 
 ## Scope
-- The code is Phase 1 only: auth, habit CRUD, evening/morning reports, day close, stats, void, dashboard.
+- The code is Phase 1 only: auth, habit CRUD, opening check and evening confirm, explicit day close, stats, void, dashboard.
 - Do not add Phase 2+ features (AI/chat, missions, pain log, history, PWA, export) unless asked. The PRD's phase gating is deliberate.
 - Phase 1 must be deployed and used for 3 real days before Phase 2 work starts. Use the gate checklist in `README.md`.
 - AI is not wired. Verdicts come from `server/src/services/canned.js` and save `modelUsed: 'canned'`. Keep canned as the permanent fallback when AI lands.
@@ -18,7 +18,8 @@ Single-user MERN coach ("THE 7"). Two independent npm projects; there is no root
 ## Architecture
 - `server/src/index.js` boots; `server/src/app.js` builds the app. `/api/auth` is public; all other `/api` routes run `requireAuth` then `lazyClose`.
 - `server/api/index.js` is the Vercel serverless entrypoint (caches the Mongo connection and app across invocations); `server/vercel.json` routes everything to it. It duplicates the production env checks, so keep the two entrypoints in sync.
-- No cron. `lazyClose` auto-closes overdue days on every authenticated API request; day D closes at noon on D+1 in the user's timezone (default `Asia/Dhaka`).
+- No cron. `lazyClose` auto-closes overdue days on every authenticated API request; a day left open closes at noon on D+1 in the user's timezone (default `Asia/Dhaka`). This is the fallback: the normal path is the user pressing **Close the day** on the evening screen.
+- A ritual day runs from waking to lights out. `window` is `morning` (the wake, filed by the opening check) or `evening` (workout, phone away, lights out, filed by the evening confirm). `PUT /api/days/:date/morning` and `PUT /api/days/:date/evening` only file their own window and never close the day; `POST /api/days/:date/close` closes it.
 - Ritual days are `YYYY-MM-DD` strings in the user's timezone, never JS `Date` values. Use `server/src/lib/dates.js`.
 - Scoring is code-only and pure in `server/src/services/stats.js`. `persistUserStats` recomputes all closed days; call it after any day-log or habit mutation. Never compute stats in routes or the client.
 - `server/src/services/closeDay.js` is the close pipeline (merge entries -> score -> upsert verdict -> persist stats). Backfill is limited to 3 days. `autoCloseOverdue` closes a batch with `skipStats` and persists stats once, so never recompute inside the loop.
@@ -26,7 +27,7 @@ Single-user MERN coach ("THE 7"). Two independent npm projects; there is no root
 - Every query filters by `userId`. Zod schemas in `server/src/schemas.js` are `.strict()`; every route validates body/query/params through that file.
 - Throw `httpError(status, CODE, message)`; the client expects errors shaped `{ error: { code, message, fields? } }`.
 - Client: React Router + TanStack Query, `.jsx` only. API calls go through `client/src/api/endpoints.js`; catch `err.uiMessage` for microcopy. Use serialized `id` fields, not `_id`.
-- Report screens read the selected ritual day from `?date=YYYY-MM-DD` and also expose day deletion; this is the UI path for backfill, so keep the date picker wired to the query key.
+- Report screens read the selected ritual day from `?date=YYYY-MM-DD` and also expose day deletion; this is the UI path for backfill, so keep the date picker wired to the query key. `/morning` is the opening check; `/evening` is the evening confirm with the **Close the day** button.
 - UI follows Quiet Weight: tokens in `client/tailwind.config.js` and `client/src/styles.css`. Grayscale dominant, brass as the only accent, no shadows, no sound, serif only for THE 7.
 
 ## Deployment
@@ -41,7 +42,7 @@ Single-user MERN coach ("THE 7"). Two independent npm projects; there is no root
 
 ## Deployment status (2026-10-30)
 
-Phase 1 is deployed to Vercel and the single user is registered. The 3-day gate runs ritual days 2026-10-30 → 2026-11-01 (closing mornings 2026-10-31 → 2026-11-02).
+Phase 1 is deployed to Vercel and the single user is registered. The day model was rebuilt on 2026-10-30 (wake opens the day, lights out closes it), so the 3-day gate restarts: planned ritual days 2026-10-30 → 2026-11-01, each closing the same evening with **Close the day**.
 
 - Repo: GitHub `main`, both Vercel projects import from it. No secrets are committed.
 - API project: Vercel project `alter-7`, Root Directory `server`, URL `https://alter-7.vercel.app`. Env vars set: `MONGODB_URI`, `JWT_SECRET`, `CLIENT_ORIGIN=https://alter-7-app.vercel.app`, `ALLOW_REGISTRATION=false`, `DEFAULT_TIMEZONE=Asia/Dhaka`.
@@ -57,7 +58,8 @@ Phase 1 is deployed to Vercel and the single user is registered. The 3-day gate 
 ## Conventions
 - ESM everywhere; relative imports need explicit `.js`/`.jsx` extensions.
 - Client display rules: ritual days come from `client/src/lib/format.js` (`formatDay` → `Fri 30 Oct`) and times from `formatTime` (12-hour). Storage stays `YYYY-MM-DD` and 24-hour `HH:MM`; only format at the edge.
-- `/evening` files the `day`-window habits and leaves the day open; `/morning` files the `night`-window habits and closes the day. Each screen names the other window so the split is never a mystery.
-- Server tests include real DB integrations through `mongodb-memory-server`, plus pure unit tests. Changes to scoring, dates, close behavior, auth, or deployment entrypoints need Vitest coverage (current tests cover streaks, lost/backfilled days, ranks, month boundaries, Dhaka rollover, noon auto-close, the 3-day backfill lock, route-level CRUD, and the Vercel handler).
+- `/morning` is the opening check: it files the `morning` window (the wake) and leaves the day open. `/evening` files the `evening` window and leaves the day open too; its **Close the day** button calls `POST /api/days/:date/close`. Each screen names the other window so the split is never a mystery.
+- Dashboard habit order comes from `client/src/lib/habits.js` (`morning` before `evening`, empty `targetTime` first inside a window), so the list reads wake → workout → phone away → lights out without touching the stored `order`.
+- Server tests include real DB integrations through `mongodb-memory-server`, plus pure unit tests. Changes to scoring, dates, close behavior, auth, or deployment entrypoints need Vitest coverage (current tests cover streaks, lost/backfilled days, ranks, month boundaries, Dhaka rollover, a day staying open until the explicit close, noon auto-close, the 3-day backfill lock, route-level CRUD, and the Vercel handler).
 - Never call a live AI provider from a test; mock `fetch`.
 - `ALTER-7-PRD.md` is the product/copy/design source of truth; if code and PRD conflict, treat the code as current state and the PRD as the spec — ask before changing scope.

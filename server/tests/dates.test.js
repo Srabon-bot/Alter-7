@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, compareDates, datesBetween, morningDueDate } from '../src/lib/dates.js';
+import { addDays, compareDates, datesBetween, partsInTz } from '../src/lib/dates.js';
 
 describe('date helpers', () => {
   it('adds days across month and year', () => {
@@ -21,10 +21,10 @@ describe('date helpers', () => {
     expect(compareDates('2026-10-02', '2026-10-02')).toBe(0);
   });
 
-  it('morning is due for yesterday before Dhaka noon', () => {
+  it('reads the wall clock of a ritual day in Dhaka', () => {
     const morning = new Date('2026-10-29T03:00:00.000Z');
-    expect(morningDueDate(morning, 'Asia/Dhaka')).toBe('2026-10-28');
-    const afternoon = new Date('2026-10-29T07:00:00.000Z');
-    expect(morningDueDate(afternoon, 'Asia/Dhaka')).toBeNull();
+    expect(partsInTz(morning, 'Asia/Dhaka')).toMatchObject({ date: '2026-10-29', hour: 9 });
+    const lateNight = new Date('2026-10-29T19:30:00.000Z');
+    expect(partsInTz(lateNight, 'Asia/Dhaka')).toMatchObject({ date: '2026-10-30', hour: 1 });
   });
 });

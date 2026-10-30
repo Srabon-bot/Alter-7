@@ -35,7 +35,7 @@ export const habitCreateSchema = z.object({
       unit: z.string().max(32).optional(),
       weight: z.number().int().min(1).max(5).optional(),
       targetTime: timeStr.optional(),
-      window: z.enum(['day', 'night']).optional(),
+      window: z.enum(['morning', 'evening']).optional(),
       core: z.boolean().optional(),
       order: z.number().int().optional(),
     })
@@ -53,7 +53,7 @@ export const habitPatchSchema = z.object({
       unit: z.string().max(32).optional(),
       weight: z.number().int().min(1).max(5).optional(),
       targetTime: timeStr.optional(),
-      window: z.enum(['day', 'night']).optional(),
+      window: z.enum(['morning', 'evening']).optional(),
       core: z.boolean().optional(),
       active: z.boolean().optional(),
       order: z.number().int().optional(),
@@ -104,7 +104,6 @@ export const morningSchema = z.object({
   body: z
     .object({
       entries: z.array(entrySchema).default([]),
-      backfilled: z.boolean().optional(),
     })
     .strict(),
 });

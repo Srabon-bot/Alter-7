@@ -2,7 +2,7 @@
 
 Personal single-user MERN coach. THE 7 is the man you are becoming.
 
-Phase 1 is the foundation: auth, habits, evening confirm, morning report, day close, stats, void, and dashboard. Voice (AI) is Phase 2 and is not wired yet.
+Phase 1 is the foundation: auth, habits, opening check, evening confirm, explicit day close, stats, void, and dashboard. Voice (AI) is Phase 2 and is not wired yet.
 
 ## Requirements
 
@@ -20,7 +20,7 @@ Phase 1 is the foundation: auth, habits, evening confirm, morning report, day cl
 
 If a local MongoDB at `MONGODB_URI` is not running, the server starts an embedded MongoDB with data in `server/.data/mongo`. This fallback is development-only and is disabled when `NODE_ENV=production`.
 
-Timezone is **Asia/Dhaka**. Days are ritual days: evening confirm on D, morning report on D+1 closes D.
+Timezone is **Asia/Dhaka**. Days are ritual days: the opening check files the wake on D, the evening confirm files the last work on D, and **Close the day** closes D that night.
 
 ## Tests
 
@@ -102,10 +102,12 @@ Open the deployed app and register the first user. After that, registration is c
 ### 4. First production smoke test
 
 - Register the first user.
-- Submit an evening confirm, then a morning report; confirm the day closes and streak/rank update.
-- Check that a missed morning report auto-closes the day at 12:00 noon Asia/Dhaka.
+- Open the opening check, tick the wake, and **Report in**: the day stays open and the dashboard drops the opening prompt.
+- Open the evening confirm, file the evening habits, and **Report in**: the day is still open.
+- Press **Close the day** on the evening screen: the day closes, the score and verdict arrive the same night, and streak/XP update.
+- Leave a day open and check that it auto-closes at 12:00 noon Asia/Dhaka on the next day.
+- Edit a closed day within 3 days; confirm the score and streak recalculate and an older closed day is locked.
 - Edit a habit and confirm stats recalculate.
-- Backfill a closed day within 3 days; confirm an older closed day is locked.
 - Delete a day log and confirm stats reset.
 - Confirm a report takes under 30 seconds on a phone.
 

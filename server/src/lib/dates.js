@@ -67,12 +67,6 @@ export function isOverdueForAutoClose(ritualDate, now = new Date(), tz = 'Asia/D
   return false;
 }
 
-export function morningDueDate(now = new Date(), tz = 'Asia/Dhaka') {
-  const nowParts = partsInTz(now, tz);
-  if (nowParts.hour < 12) return addDays(nowParts.date, -1);
-  return null;
-}
-
 export function minutesBetweenTimes(fromHHMM, toHHMM) {
   const [fh, fm] = fromHHMM.split(':').map(Number);
   const [th, tm] = toHHMM.split(':').map(Number);

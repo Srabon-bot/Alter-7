@@ -19,6 +19,7 @@ export const daysApi = {
   get: (date) => client.get(`/days/${date}`).then((r) => r.data),
   evening: (date, body) => client.put(`/days/${date}/evening`, body).then((r) => r.data),
   morning: (date, body) => client.put(`/days/${date}/morning`, body).then((r) => r.data),
+  close: (date) => client.post(`/days/${date}/close`).then((r) => r.data),
   remove: (date) => client.delete(`/days/${date}`).then((r) => r.data),
 };
 
