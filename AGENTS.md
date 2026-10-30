@@ -41,7 +41,7 @@ Single-user MERN coach ("THE 7"). Two independent npm projects; there is no root
 
 ## Deployment status (2026-10-30)
 
-Phase 1 is deployed to Vercel and the single user is registered; the 3-day gate starts 2026-10-31 and runs through 2026-11-02.
+Phase 1 is deployed to Vercel and the single user is registered. The 3-day gate runs ritual days 2026-10-30 → 2026-11-01 (closing mornings 2026-10-31 → 2026-11-02).
 
 - Repo: GitHub `main`, both Vercel projects import from it. No secrets are committed.
 - API project: Vercel project `alter-7`, Root Directory `server`, URL `https://alter-7.vercel.app`. Env vars set: `MONGODB_URI`, `JWT_SECRET`, `CLIENT_ORIGIN=https://alter-7-app.vercel.app`, `ALLOW_REGISTRATION=false`, `DEFAULT_TIMEZONE=Asia/Dhaka`.
