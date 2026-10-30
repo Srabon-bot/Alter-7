@@ -12,6 +12,7 @@ export default function Void() {
   }
 
   const line = summary.data?.latestLine || 'Report in. The day is waiting.';
+  const destination = summary.data?.morningDue ? 'Continue to morning report' : 'Continue to today';
 
   return (
     <button
@@ -20,7 +21,7 @@ export default function Void() {
       className="flex min-h-screen w-full cursor-pointer flex-col items-center justify-center bg-void px-8 text-center"
     >
       <p className="voice rise max-w-chat text-h1 text-text">{summary.isLoading ? 'Reviewing the record.' : line}</p>
-      <p className="label mt-16 text-text-faint">Continue</p>
+      <p className="label mt-16 text-text-dim">{summary.isLoading ? 'Reviewing the record.' : destination}</p>
     </button>
   );
 }

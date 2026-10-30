@@ -6,12 +6,42 @@ import Button from '../components/Button.jsx';
 import HabitRow from '../components/HabitRow.jsx';
 import Scale from '../components/Scale.jsx';
 import Shell from '../components/Shell.jsx';
+import { formatDay } from '../lib/format.js';
+
+const COPY = {
+  evening: {
+    title: 'Evening confirm',
+    section: 'Today',
+    heading: 'The work of today.',
+    hint: "Today's work. The day closes tomorrow morning.",
+    other: 'Phone away, lights out and wake time are filed in the morning report.',
+  },
+  morning: {
+    title: 'Morning report',
+    section: 'Last night',
+    heading: 'Last night. Then the day closes.',
+    hint: '',
+    other: 'Morning workout was filed in last night’s confirm.',
+  },
+};
+
+function statusOf(day) {
+  if (!day) return { text: 'Nothing filed', className: 'text-text-faint' };
+  if (day.status === 'closed') {
+    return {
+      text: `${day.won ? 'Won' : 'Lost'} · ${day.score}`,
+      className: day.won ? 'text-brass' : 'text-blood',
+    };
+  }
+  return { text: 'Open', className: 'text-text-dim' };
+}
 
 export default function Report({ kind }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [params, setParams] = useSearchParams();
   const summary = useQuery({ queryKey: ['summary'], queryFn: statsApi.summary });
+  const copy = COPY[kind] || COPY.evening;
 
   const defaultDate =
     kind === 'morning'
@@ -38,6 +68,11 @@ export default function Report({ kind }) {
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(null);
+
+  const isPast = Boolean(date && summary.data?.today && date !== summary.data.today);
+  const showTools = toolsOpen ?? isPast;
+  const status = statusOf(day);
 
   useEffect(() => {
     setError('');
@@ -46,6 +81,7 @@ export default function Report({ kind }) {
     setMood(null);
     setEnergy(null);
     setNote('');
+    setToolsOpen(null);
   }, [date]);
 
   useEffect(() => {
@@ -72,8 +108,16 @@ export default function Report({ kind }) {
       }
       return daysApi.morning(date, { entries });
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       await qc.invalidateQueries();
+      if (kind === 'morning' && data?.day) {
+        navigate('/dashboard', {
+          state: {
+            justClosed: { date: data.day.date, won: data.day.won, score: data.day.score },
+          },
+        });
+        return;
+      }
       navigate('/dashboard');
     },
     onError: (err) => setError(err.uiMessage),
@@ -91,37 +135,24 @@ export default function Report({ kind }) {
   return (
     <Shell>
       <div className="mx-auto max-w-chat rise">
-        <p className="label">{kind === 'morning' ? 'Morning report' : 'Evening confirm'}</p>
-        <div className="mt-2 flex items-end justify-between gap-6">
-          <label className="flex-1">
-            <span className="label">Ritual day</span>
-            <input
-              type="date"
-              className="underline-input"
-              value={date || ''}
-              max={summary.data?.today || ''}
-              onChange={changeDate}
-            />
-          </label>
-          {day ? (
-            <p
-              className={`data pb-3 text-small ${
-                day.status === 'closed' ? (day.won ? 'text-brass' : 'text-blood') : 'text-text-dim'
-              }`}
-            >
-              {day.status === 'closed' ? `${day.won ? 'Won' : 'Lost'} · ${day.score}` : 'Open'}
-            </p>
-          ) : null}
+        <p className="label">{copy.title}</p>
+
+        <div className="mt-3 flex flex-wrap items-baseline justify-between gap-3">
+          <p className="data text-h2 text-text">{date ? formatDay(date) : '—'}</p>
+          <p className={`data text-small ${status.className}`}>{status.text}</p>
         </div>
-        {day?.status === 'closed' ? (
-          <p className="mt-2 text-small text-text-dim">Edits to a closed day are limited to three days.</p>
+
+        {copy.hint ? <p className="mt-3 text-small text-text-dim">{copy.hint}</p> : null}
+        {isPast ? (
+          <p className="mt-3 text-small text-text-dim">
+            Backfill. Closed days can be edited for three days.
+          </p>
         ) : null}
 
-        <p className="voice mt-8 text-h2">
-          {kind === 'morning' ? 'Last night. Then the day closes.' : 'The work of today.'}
-        </p>
+        <p className="voice mt-8 text-h2">{copy.heading}</p>
 
-        <div className="mt-12">
+        <p className="label mt-12">{copy.section}</p>
+        <div className="mt-2">
           {habits.map((h) => (
             <HabitRow
               key={h.id}
@@ -131,6 +162,7 @@ export default function Report({ kind }) {
             />
           ))}
         </div>
+        <p className="mt-4 text-small text-text-dim">{copy.other}</p>
 
         {kind === 'evening' ? (
           <>
@@ -154,25 +186,58 @@ export default function Report({ kind }) {
           {save.isPending ? 'Reviewing the record.' : 'Report in'}
         </Button>
 
-        {day ? (
-          confirmDelete ? (
-            <div className="mt-12 border border-blood p-6">
-              <p>This cannot be undone.</p>
-              <div className="mt-4 flex flex-wrap gap-4">
-                <Button variant="blood" onClick={() => remove.mutate()} disabled={remove.isPending}>
-                  Delete
-                </Button>
-                <Button variant="secondary" onClick={() => setConfirmDelete(false)}>
-                  Continue
-                </Button>
-              </div>
+        <div className="mt-16 border-t border-line pt-6">
+          <button
+            type="button"
+            className="label text-text-dim hover:text-text"
+            onClick={() => setToolsOpen(!showTools)}
+            aria-expanded={showTools}
+          >
+            {showTools ? 'Close day tools' : 'Change day'}
+          </button>
+
+          {showTools ? (
+            <div className="mt-6 space-y-8">
+              <label className="block">
+                <span className="label">Ritual day</span>
+                <input
+                  type="date"
+                  className="underline-input"
+                  value={date || ''}
+                  max={summary.data?.today || ''}
+                  onChange={changeDate}
+                />
+                <span className="mt-2 block text-small text-text-dim">
+                  Older days are backfills. Future days cannot be filed.
+                </span>
+              </label>
+
+              {day ? (
+                confirmDelete ? (
+                  <div className="border border-blood p-6">
+                    <p>This cannot be undone.</p>
+                    <div className="mt-4 flex flex-wrap gap-4">
+                      <Button variant="blood" onClick={() => remove.mutate()} disabled={remove.isPending}>
+                        Delete
+                      </Button>
+                      <Button variant="secondary" onClick={() => setConfirmDelete(false)}>
+                        Continue
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="label text-blood"
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    Delete this day
+                  </button>
+                )
+              ) : null}
             </div>
-          ) : (
-            <button type="button" className="label mt-12 text-blood" onClick={() => setConfirmDelete(true)}>
-              Delete this day
-            </button>
-          )
-        ) : null}
+          ) : null}
+        </div>
       </div>
     </Shell>
   );

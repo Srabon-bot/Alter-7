@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { authApi } from '../api/endpoints.js';
 
 const links = [
-  { to: '/dashboard', label: 'Dashboard' },
+  { to: '/dashboard', label: 'Today' },
   { to: '/evening', label: 'Evening' },
   { to: '/morning', label: 'Morning' },
   { to: '/habits', label: 'Habits' },
@@ -34,7 +34,12 @@ export default function Shell({ children }) {
               {l.label}
             </NavLink>
           ))}
-          <button type="button" onClick={logout} className="label text-text-faint hover:text-blood">
+          <button
+            type="button"
+            onClick={logout}
+            className="label text-text-faint hover:text-blood"
+            title="Sign out"
+          >
             Leave
           </button>
         </nav>

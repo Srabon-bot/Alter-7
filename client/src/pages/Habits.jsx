@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { habitsApi } from '../api/endpoints.js';
 import Button from '../components/Button.jsx';
 import Shell from '../components/Shell.jsx';
+import { formatTime } from '../lib/format.js';
 
 const empty = {
   name: '',
@@ -81,8 +82,14 @@ function HabitFields({ form, setForm }) {
         <label>
           <span className="label">Target time</span>
           <input className="underline-input" type="time" value={form.targetTime} onChange={set('targetTime')} />
+          <span className="data text-small text-text-dim">
+            {form.targetTime ? formatTime(form.targetTime) : '—'}
+          </span>
         </label>
       </div>
+      <p className="text-small text-text-dim">
+        Evening confirm files day habits. Morning report files night habits.
+      </p>
       {form.type === 'numeric' ? (
         <div className="grid grid-cols-2 gap-6">
           <label>
@@ -108,15 +115,18 @@ function HabitFields({ form, setForm }) {
           </label>
         </div>
       ) : null}
-      <label className="flex min-h-12 items-center gap-3">
+      <label className="flex min-h-12 items-start gap-3">
         <input
           type="checkbox"
-          className="h-4 w-4"
+          className="mt-1 h-4 w-4"
           style={{ accentColor: 'var(--brass)' }}
           checked={Boolean(form.core)}
           onChange={(e) => setForm({ ...form, core: e.target.checked })}
         />
-        <span className="label">Core habit</span>
+        <span>
+          <span className="label block">Core habit</span>
+          <span className="text-small text-text-dim">Core habits decide whether a day is won.</span>
+        </span>
       </label>
     </>
   );
@@ -191,6 +201,10 @@ export default function Habits() {
       <div className="mx-auto max-w-chat rise">
         <p className="label">Habits</p>
         <p className="voice mt-4 text-h2">The work, listed.</p>
+        <p className="mt-4 text-small text-text-dim">
+          Core habits decide whether a day is won. Weight 1 to 5 sets how much a habit counts toward
+          the score.
+        </p>
         {list.data?.warning ? <p className="mt-6 text-small text-blood">{list.data.warning}</p> : null}
         {error ? <p className="mt-6 text-small text-blood">{error}</p> : null}
 
@@ -203,18 +217,11 @@ export default function Habits() {
                   {h.window} · w{h.weight}
                   {h.type === 'numeric' ? ` · ${h.target}${h.unit ? ` ${h.unit}` : ''}` : ''}
                   {h.core ? ' · core' : ''}
-                  {h.targetTime ? ` · ${h.targetTime}` : ''}
+                  {h.targetTime ? ` · ${formatTime(h.targetTime)}` : ''}
                 </p>
               </div>
               <button type="button" className="label text-text-dim hover:text-text" onClick={() => startEdit(h)}>
                 Edit
-              </button>
-              <button
-                type="button"
-                className="label text-text-dim hover:text-text"
-                onClick={() => patch.mutate({ id: h.id, body: { core: !h.core } })}
-              >
-                Core
               </button>
               <button
                 type="button"

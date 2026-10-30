@@ -1,3 +1,5 @@
+import { formatTime } from '../lib/format.js';
+
 export default function HabitRow({ habit, done, onToggle }) {
   return (
     <button
@@ -9,7 +11,7 @@ export default function HabitRow({ habit, done, onToggle }) {
     >
       <span className="flex-1 text-body">{habit.name}</span>
       {habit.targetTime ? (
-        <span className="data text-small text-text-dim">{habit.targetTime}</span>
+        <span className="data text-small text-text-dim">{formatTime(habit.targetTime)}</span>
       ) : null}
       <span className="tick" data-on={done ? 'true' : 'false'} aria-hidden="true">
         {done ? '✓' : ''}
