@@ -16,7 +16,7 @@ The user's pattern is to over-plan and under-start, so v1 is deliberately small.
 
 - Auth (single user)
 - Habits: seeded, editable (full CRUD)
-- Evening Confirm and Morning Report (full CRUD on day logs)
+- Opening check and Evening Confirm (full CRUD on day logs)
 - Day close, score, strict streak, XP, Roman-numeral rank
 - Void opening screen and dashboard
 - THE 7's daily verdict (AI) and a chat with THE 7 (messages deletable)

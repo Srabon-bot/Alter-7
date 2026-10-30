@@ -58,7 +58,7 @@ export function datesBetween(from, to) {
   return out;
 }
 
-/** Morning report for ritual day D is due on D+1. Auto-close at 12:00 noon on D+1. */
+/** A day left open auto-closes at 12:00 noon on D+1, the fallback after the user never closed it. */
 export function isOverdueForAutoClose(ritualDate, now = new Date(), tz = 'Asia/Dhaka') {
   const nowParts = partsInTz(now, tz);
   const closeAfter = addDays(ritualDate, 1);

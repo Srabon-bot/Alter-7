@@ -49,7 +49,7 @@ export default function Login() {
       </form>
       {status.data?.allowRegistration ? (
         <p className="mt-8 text-center text-small text-text-dim">
-          First report.{' '}
+          First check.{' '}
           <Link to="/register" className="text-text">
             Register
           </Link>
