@@ -76,7 +76,10 @@ export default function Dashboard() {
   return (
     <Shell>
       <div className="rise">
-        <section className="border-l border-line-strong pl-4">
+        <section
+          className={`border-l-2 pl-4 ${action.closed ? (log?.won ? 'border-brass' : 'border-blood') : 'border-brass'}`}
+          style={{ backgroundColor: 'var(--ink-2)' }}
+        >
           <p className={`label ${action.closed ? (log?.won ? 'text-brass' : 'text-blood') : ''}`}>
             {action.label}
           </p>
