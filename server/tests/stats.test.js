@@ -120,6 +120,34 @@ describe('streak, xp, rank', () => {
     const stats = recalculateStats(days, habits);
     expect(stats.currentStreak).toBe(3);
   });
+
+  it('resets a winning streak across a missing ritual date', () => {
+    const days = [
+      { date: '2026-10-01', entries: allDone() },
+      { date: '2026-10-03', entries: allDone() },
+    ];
+    const stats = recalculateStats(days, habits);
+    expect(stats.currentStreak).toBe(1);
+    expect(stats.longestStreak).toBe(1);
+  });
+
+  it('scores closed days from their habit snapshot', () => {
+    const snapshot = habits.map((habit) => ({ ...habit, weight: 1 }));
+    const days = [{ date: '2026-10-01', habitSnapshot: snapshot, entries: miss('phone') }];
+    const stats = recalculateStats(days, habits);
+    expect(days[0].score).toBe(75);
+    expect(stats.totalXp).toBe(75);
+  });
+
+  it('keeps legacy stored results stable when no snapshot exists', () => {
+    const days = [
+      { date: '2026-10-01', score: 75, won: false, entries: miss('phone') },
+    ];
+    const stats = recalculateStats(days, [], 'Unranked', { preserveStoredResults: true });
+    expect(days[0].score).toBe(75);
+    expect(days[0].won).toBe(false);
+    expect(stats.totalXp).toBe(75);
+  });
 });
 
 describe('Asia/Dhaka dates and lazy auto-close', () => {

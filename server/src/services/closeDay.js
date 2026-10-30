@@ -13,7 +13,7 @@ export async function activeHabits(userId) {
 export async function persistUserStats(userId, previousRank) {
   const habits = await Habit.find({ userId, archivedAt: null }).sort({ order: 1 });
   const closed = await DayLog.find({ userId, status: 'closed' }).sort({ date: 1 });
-  const stats = recalculateStats(closed, habits, previousRank);
+  const stats = recalculateStats(closed, habits, previousRank, { preserveStoredResults: true });
   for (const day of closed) {
     if (day.isModified?.() || day.score !== undefined) {
       await DayLog.updateOne({ _id: day._id }, { score: day.score, won: day.won });
@@ -45,6 +45,20 @@ function mergeEntries(existing, incoming, habitIds) {
   return [...map.values()];
 }
 
+function snapshotHabits(habits) {
+  return habits.map((habit) => ({
+    habitId: habit._id,
+    name: habit.name,
+    type: habit.type,
+    target: habit.target,
+    unit: habit.unit,
+    weight: habit.weight,
+    window: habit.window,
+    core: habit.core,
+    active: habit.active,
+  }));
+}
+
 export async function getOrCreateDay(userId, date) {
   let day = await DayLog.findOne({ userId, date });
   if (!day) {
@@ -60,10 +74,28 @@ export async function closeDay({
   markEveningMissed = false,
   backfilled = false,
   skipStats = false,
+  recalculateClosed = false,
 }) {
   const user = await User.findById(userId);
   const habits = await activeHabits(userId);
   const day = await getOrCreateDay(userId, date);
+
+  if (day.status === 'closed' && !recalculateClosed) {
+    const verdict = await Verdict.findOne({ userId, date });
+    return {
+      day,
+      stats: {
+        currentStreak: user.currentStreak,
+        longestStreak: user.longestStreak,
+        totalXp: user.totalXp,
+        rank: user.rank,
+      },
+      verdict,
+      line: cannedLine(verdict),
+    };
+  }
+
+  if (!day.habitSnapshot?.length) day.habitSnapshot = snapshotHabits(habits);
 
   if (markEveningMissed) {
     const eveningIds = new Set(habits.filter((h) => h.window === 'evening').map((h) => String(h._id)));
@@ -79,7 +111,8 @@ export async function closeDay({
     day.entries = [...map.values()];
   }
 
-  const result = computeDayResult(habits, day.entries);
+  const scoringHabits = day.habitSnapshot?.length ? day.habitSnapshot : habits;
+  const result = computeDayResult(scoringHabits, day.entries);
   day.status = 'closed';
   day.closedBy = closedBy;
   day.score = result.score;
@@ -89,10 +122,11 @@ export async function closeDay({
   if (closedBy === 'evening' && !day.eveningAt) day.eveningAt = new Date();
   await day.save();
 
+  const stats = skipStats ? null : await persistUserStats(userId, user.rank);
   const canned = cannedVerdict({
     won: result.won,
     score: result.score,
-    streak: result.won ? (user.currentStreak || 0) + 1 : 0,
+    streak: result.won ? (stats?.currentStreak ?? (user.currentStreak || 0) + 1) : 0,
     closedBy,
   });
 
@@ -108,8 +142,6 @@ export async function closeDay({
     },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
-
-  const stats = skipStats ? null : await persistUserStats(userId, user.rank);
 
   return {
     day,

@@ -1,3 +1,5 @@
+import { addDays } from '../lib/dates.js';
+
 const MILESTONES = [7, 14, 30, 60, 100];
 const MILESTONE_XP = 50;
 
@@ -39,13 +41,21 @@ export function isHabitComplete(habit, entry) {
   return Boolean(entry.done);
 }
 
+function habitId(habit) {
+  return String(habit._id || habit.id || habit.habitId);
+}
+
+function scoringHabitsForDay(day, habits) {
+  return day?.habitSnapshot?.length ? day.habitSnapshot : habits;
+}
+
 export function dayScore(habits, entries) {
   const active = habits.filter((h) => h.active !== false && !h.archivedAt);
   const weightSum = active.reduce((sum, h) => sum + (h.weight || 1), 0);
   if (weightSum === 0) return 0;
   const byId = new Map((entries || []).map((e) => [String(e.habitId), e]));
   const earned = active.reduce((sum, h) => {
-    const entry = byId.get(String(h._id || h.id));
+    const entry = byId.get(habitId(h));
     return sum + (isHabitComplete(h, entry) ? h.weight || 1 : 0);
   }, 0);
   return Math.round((earned / weightSum) * 100);
@@ -55,7 +65,7 @@ export function dayWon(habits, entries) {
   const core = habits.filter((h) => h.core && h.active !== false && !h.archivedAt);
   if (core.length === 0) return false;
   const byId = new Map((entries || []).map((e) => [String(e.habitId), e]));
-  return core.every((h) => isHabitComplete(h, byId.get(String(h._id || h.id))));
+  return core.every((h) => isHabitComplete(h, byId.get(habitId(h))));
 }
 
 export function computeDayResult(habits, entries) {
@@ -69,28 +79,45 @@ export function computeDayResult(habits, entries) {
  * Recalculate streak, XP and rank from a chronologically sorted list of closed days.
  * Rank never decreases relative to previousRank.
  */
-export function recalculateStats(closedDays, habits, previousRank = 'Unranked') {
+export function recalculateStats(
+  closedDays,
+  habits,
+  previousRank = 'Unranked',
+  { preserveStoredResults = false } = {},
+) {
   let currentStreak = 0;
   let longestStreak = 0;
   let totalXp = 0;
   const habitStreaks = {};
 
+  let previousDate = null;
   for (const day of closedDays) {
-    const { score, won } = computeDayResult(habits, day.entries);
+    const dayHabits = scoringHabitsForDay(day, habits);
+    const hasStoredResult =
+      preserveStoredResults &&
+      !day.habitSnapshot?.length &&
+      day.score !== null &&
+      day.score !== undefined &&
+      day.won !== null &&
+      day.won !== undefined;
+    const { score, won } = hasStoredResult
+      ? { score: day.score, won: day.won }
+      : computeDayResult(dayHabits, day.entries);
     day.score = score;
     day.won = won;
 
     if (won) {
-      currentStreak += 1;
+      currentStreak = previousDate && addDays(previousDate, 1) === day.date ? currentStreak + 1 : 1;
       if (MILESTONES.includes(currentStreak)) totalXp += MILESTONE_XP;
     } else {
       currentStreak = 0;
     }
     longestStreak = Math.max(longestStreak, currentStreak);
     totalXp += score;
+    previousDate = day.date;
 
-    for (const habit of habits.filter((h) => h.active !== false && !h.archivedAt)) {
-      const id = String(habit._id || habit.id);
+    for (const habit of dayHabits.filter((h) => h.active !== false && !h.archivedAt)) {
+      const id = habitId(habit);
       const entry = (day.entries || []).find((e) => String(e.habitId) === id);
       const done = isHabitComplete(habit, entry);
       const prev = habitStreaks[id] || { current: 0, longest: 0 };

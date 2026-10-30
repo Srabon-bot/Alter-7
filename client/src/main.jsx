@@ -17,7 +17,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Atmosphere />
-        <App />
+        <div className="app-layer">
+          <App />
+        </div>
       </BrowserRouter>
     </QueryClientProvider>
   </React.StrictMode>,

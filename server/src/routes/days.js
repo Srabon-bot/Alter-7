@@ -137,6 +137,7 @@ router.put('/:date/evening', validate(eveningSchema), async (req, res, next) => 
       date,
       closedBy: existing.closedBy || 'evening',
       backfilled: true,
+      recalculateClosed: true,
     });
     res.json({ day: serializeDay(result.day) });
   } catch (err) {
@@ -166,6 +167,7 @@ router.put('/:date/morning', validate(morningSchema), async (req, res, next) => 
       date,
       closedBy: existing.closedBy || 'evening',
       backfilled: true,
+      recalculateClosed: true,
     });
     res.json({ day: serializeDay(result.day) });
   } catch (err) {

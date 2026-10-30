@@ -204,12 +204,25 @@ describe('phase 1 API', () => {
 
     const archived = await agent.patch(`/api/habits/${phone.id}`).send({ archived: true });
     expect(archived.status).toBe(200);
-    expect(archived.body.stats.currentStreak).toBe(1);
-    expect(archived.body.stats.totalXp).toBe(100);
+    expect(archived.body.stats.currentStreak).toBe(0);
+    expect(archived.body.stats.totalXp).toBe(75);
 
     const summary = await agent.get('/api/stats/summary');
-    expect(summary.body.user.currentStreak).toBe(1);
-    expect(summary.body.user.totalXp).toBe(100);
+    expect(summary.body.user.currentStreak).toBe(0);
+    expect(summary.body.user.totalXp).toBe(75);
+  });
+
+  it('returns the existing result when a closed day is closed again', async () => {
+    const { agent } = await register();
+    const habits = await habitsOf(agent);
+    const date = today();
+
+    const first = await reportDay(agent, date, habits);
+    const second = await closeDay(agent, date);
+
+    expect(first.body.day.id).toBe(second.body.day.id);
+    expect(second.body.day.status).toBe('closed');
+    expect(second.body.verdict.line).toBeTruthy();
   });
 
   it('allows a closed day to be backfilled within three days', async () => {
